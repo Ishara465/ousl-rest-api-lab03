@@ -9,96 +9,39 @@ jobs:
   build-and-secure:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-
-    # PostgreSQL Database for CI Testing
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: ous1_db
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: ci_test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d ous1_db"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     defaults:
       run:
         working-directory: lab02
 
-    # Spring Boot Database Configuration
-    env:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/ous1_db?sslmode=disable
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: ci_test_password
-
     steps:
-      # Step 1: Checkout Source Code
+      # Step 1: Checkout Code
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Step 2: Configure Java 17
+      # Step 2: Set up Java 17
       - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'maven'
-          cache-dependency-path: lab02/pom.xml
 
-      # Step 3: Validate SonarCloud Configuration
-      - name: Validate SonarCloud Configuration
-        env:
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          if [ -z "$SONAR_ORGANIZATION" ]; then
-            echo "::error::SONAR_ORGANIZATION is missing"
-            exit 1
-          fi
-
-          if [ -z "$SONAR_PROJECT_KEY" ]; then
-            echo "::error::SONAR_PROJECT_KEY is missing"
-            exit 1
-          fi
-
-          if [ -z "$SONAR_TOKEN" ]; then
-            echo "::error::SONAR_TOKEN is missing"
-            exit 1
-          fi
-
-      # Step 4: Maven Build and SonarCloud SAST Scan
+      # Step 3: SonarCloud SAST Scan
       - name: SonarCloud SAST Scan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
         run: |
-          mvn -B clean verify \
-            org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
-            -Dsonar.host.url=https://sonarcloud.io \
-            "-Dsonar.organization=${SONAR_ORGANIZATION}" \
-            "-Dsonar.projectKey=${SONAR_PROJECT_KEY}" \
+          mvn verify sonar:sonar \
+            -Dsonar.projectKey=ousl-student-service \
             -Dsonar.qualitygate.wait=true
 
-      # Step 5: Build Docker Image
-      - name: Build Docker Container
-        run: |
-          docker build \
-            -f DockerFile \
-            -t ousl-student-api:${{ github.sha }} .
+      # Step 4: Build Docker Container
+      - name: Build Container
+        run: docker build -t ousl-student-api:${{ github.sha }} .
 
-      # Step 6: Trivy Container Security Scan
+      # Step 5: Aqua Security Trivy Scan
       - name: Aqua Security Trivy Scan
         uses: aquasecurity/trivy-action@v0.35.0
         with:
@@ -107,15 +50,10 @@ jobs:
           exit-code: '0'
           severity: 'CRITICAL'
 
-      # Step 7: Configure AWS Credentials
+      # Step 6: Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-southeast-2
-
-      # Step 8: Verify AWS Identity
-      - name: Verify AWS Connection
-        run: |
-          aws sts get-caller-identity
