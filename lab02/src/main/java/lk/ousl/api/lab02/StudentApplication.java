@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,6 +19,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @SpringBootApplication
+@EnableJpaRepositories(considerNestedRepositories = true)
 @RestController
 @RequestMapping("/api/students")
 public class StudentApplication {
