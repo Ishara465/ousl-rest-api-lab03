@@ -12,9 +12,31 @@ jobs:
     permissions:
       contents: read
 
+    # Temporary PostgreSQL for GitHub Actions tests
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ous1_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ous1_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     defaults:
       run:
         working-directory: lab02
+
+    # Database connection for CI tests
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/ous1_db?sslmode=disable
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ci_test_password
 
     steps:
       # Step 1: Checkout Code
