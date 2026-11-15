@@ -9,12 +9,12 @@ jobs:
   build-and-secure:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: lab03
-
     permissions:
       contents: read
+
+    defaults:
+      run:
+        working-directory: lab02
 
     steps:
       # Step 1: Checkout Code
@@ -30,7 +30,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
-          cache-dependency-path: lab03/pom.xml
+          cache-dependency-path: lab02/pom.xml
 
       # Step 3: SonarCloud SAST Scan
       - name: SonarCloud SAST Scan
@@ -46,9 +46,10 @@ jobs:
             -Dsonar.qualitygate.wait=true
 
       # Step 4: Build Docker Container
-      - name: Build Container
+      - name: Build Docker Container
         run: |
-          docker build -t ousl-student-api:${{ github.sha }} .
+          docker build -f DockerFile \
+            -t ousl-student-api:${{ github.sha }} .
 
       # Step 5: Aqua Security Trivy Scan
       - name: Aqua Security Trivy Scan
