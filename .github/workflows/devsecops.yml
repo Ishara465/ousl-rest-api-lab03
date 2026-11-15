@@ -11,7 +11,10 @@ jobs:
 
     defaults:
       run:
-        working-directory: lab02
+        working-directory: lab03
+
+    permissions:
+      contents: read
 
     steps:
       # Step 1: Checkout Code
@@ -20,12 +23,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Step 2: Set up Java 17
+      # Step 2: Set up JDK 17
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'maven'
+          cache-dependency-path: lab03/pom.xml
 
       # Step 3: SonarCloud SAST Scan
       - name: SonarCloud SAST Scan
@@ -33,13 +38,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          mvn verify sonar:sonar \
-            -Dsonar.projectKey=ousl-student-service \
+          mvn -B verify \
+            org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }} \
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} \
             -Dsonar.qualitygate.wait=true
 
       # Step 4: Build Docker Container
       - name: Build Container
-        run: docker build -t ousl-student-api:${{ github.sha }} .
+        run: |
+          docker build -t ousl-student-api:${{ github.sha }} .
 
       # Step 5: Aqua Security Trivy Scan
       - name: Aqua Security Trivy Scan
